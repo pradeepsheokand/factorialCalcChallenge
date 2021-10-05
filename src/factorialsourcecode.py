@@ -103,7 +103,7 @@ def calcFactorialRangeOnChrome(lower_range,upper_range,step):
         search_box.send_keys(i)
         submitbutton_element = submitButtonElement(driver)
         submitbutton_element.click()
-        time.sleep(3)
+        time.sleep(1)
         resulttext_element = readResultText(driver)
         txt = resulttext_element.text
         logging.getLogger("urllib3").setLevel(logging.ERROR)
@@ -127,7 +127,7 @@ def calcFactorialRangeOnFirefox(lower_range,upper_range,step):
         search_box.send_keys(i)
         submitbutton_element = submitButtonElement(driver)
         submitbutton_element.click()
-        time.sleep(3)
+        time.sleep(1)
         resulttext_element = readResultText(driver)
         txt = resulttext_element.text
         logging.getLogger("urllib3").setLevel(logging.ERROR)
