@@ -24,8 +24,8 @@ def test_factorial_basic(items, expected):
 This test-case is run on the Chrome Browser. Test Input includes boundary conditions at lower (9) and upper bounds (101)'''
 @pytest.mark.cross_browser    
 def test_factorial_positiveinteger_chrome():
-    expectedResult = calcExpectedFactorialRange(95,101)
-    actualResult = calcFactorialRangeOnChrome(95,101)
+    expectedResult = calcExpectedFactorialRange(95,101,1)
+    actualResult = calcFactorialRangeOnChrome(95,101,1)
     assert expectedResult == actualResult
     
     
@@ -33,8 +33,8 @@ def test_factorial_positiveinteger_chrome():
 This test-case is run on the Firefox Browser. Test Input includes boundary conditions at lower (9) and upper bounds (101)'''
 @pytest.mark.cross_browser    
 def test_factorial_positiveinteger_firefox():
-    expectedResult = calcExpectedFactorialRange(0,102)
-    actualResult = calcFactorialRangeOnFirefox(0,102)
+    expectedResult = calcExpectedFactorialRange(0,102,1)
+    actualResult = calcFactorialRangeOnFirefox(0,102,1)
     assert expectedResult == actualResult
 
     
