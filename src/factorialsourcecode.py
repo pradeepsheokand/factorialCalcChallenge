@@ -92,13 +92,13 @@ def calcFactorialUnexpected(value):
     return txt
 
 #Function to calculate Factorial using Factorial Web Calculator on CHROME, it takes a range of numbers as input
-def calcFactorialRangeOnChrome(lower_range,upper_range):
+def calcFactorialRangeOnChrome(lower_range,upper_range,step):
     list_webtest = []
     driver = chromebrowser()
     driver.get(BASEURL)
     driver.implicitly_wait(5)
     search_box = searchboxElement(driver)
-    for i in range(lower_range,upper_range):
+    for i in range(lower_range,upper_range,step):
         search_box.clear()
         search_box.send_keys(i)
         driver.implicitly_wait(5)
@@ -118,13 +118,13 @@ def calcFactorialRangeOnChrome(lower_range,upper_range):
     return list_webtest
 
 #Function to calculate Factorial using Factorial Web Calculator on FIREFOX, it takes a range of numbers as input
-def calcFactorialRangeOnFirefox(lower_range,upper_range):
+def calcFactorialRangeOnFirefox(lower_range,upper_range,step):
     list_webtest = []
     driver = firefoxbrowser()
     driver.get(BASEURL)
     driver.implicitly_wait(5)
     search_box = searchboxElement(driver)
-    for i in range(lower_range,upper_range):
+    for i in range(lower_range,upper_range,step):
         search_box.clear()
         search_box.send_keys(i)
         submitbutton_element = submitButtonElement(driver)
@@ -142,9 +142,9 @@ def calcFactorialRangeOnFirefox(lower_range,upper_range):
     return list_webtest
 
 #Function to calculate Factorial using Python Math Factorial Function, it takes a range of numbers as input
-def calcExpectedFactorialRange(lower_range,upper_range):
+def calcExpectedFactorialRange(lower_range,upper_range,step):
     list_math = []
-    for i in range(lower_range,upper_range):
+    for i in range(lower_range,upper_range,step):
         list_math.append([i, float(math.factorial(i))])
         
     expectedFactorial = [[int(float(j)) for j in i] for i in list_math]
