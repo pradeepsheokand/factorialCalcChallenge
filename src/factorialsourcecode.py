@@ -101,13 +101,11 @@ def calcFactorialRangeOnChrome(lower_range,upper_range,step):
     for i in range(lower_range,upper_range,step):
         search_box.clear()
         search_box.send_keys(i)
-        driver.implicitly_wait(5)
         submitbutton_element = submitButtonElement(driver)
         submitbutton_element.click()
-        driver.implicitly_wait(5)
+        time.sleep(3)
         resulttext_element = readResultText(driver)
         txt = resulttext_element.text
-        driver.implicitly_wait(5)
         logging.getLogger("urllib3").setLevel(logging.ERROR)
         logging.info(f"txt= ${txt}")
         final_list = re.findall("[-+]?[.]?[\d]+(?:,\d\d\d)*[\.]?\d*(?:[eE][-+]?\d+)?", txt)
@@ -129,7 +127,7 @@ def calcFactorialRangeOnFirefox(lower_range,upper_range,step):
         search_box.send_keys(i)
         submitbutton_element = submitButtonElement(driver)
         submitbutton_element.click()
-        driver.implicitly_wait(5)
+        time.sleep(3)
         resulttext_element = readResultText(driver)
         txt = resulttext_element.text
         logging.getLogger("urllib3").setLevel(logging.ERROR)
