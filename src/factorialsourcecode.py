@@ -56,7 +56,7 @@ def readResultText(driver):
 
 #Function to calculate Factorial using Factorial Web Calculator, it takes a single number as input
 def calcFactorialSingleNumber(inputNumber):
-    driver = chromebrowser()
+    driver = firefoxbrowser()
     driver.get(BASEURL)
     resultList = []
     searchbox_element = searchboxElement(driver)
