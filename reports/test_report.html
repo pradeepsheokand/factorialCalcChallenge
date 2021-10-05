@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>Test Report</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++)
+        filterItems[i].hidden = false;
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 05-Oct-2021 at 12:27:59 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.1.1</p>
+    <h2>Environment</h2>
+    <table id="environment">
+      <tr>
+        <td>CI</td>
+        <td>true</td></tr>
+      <tr>
+        <td>CIRCLE_BRANCH</td>
+        <td>main</td></tr>
+      <tr>
+        <td>CIRCLE_BUILD_NUM</td>
+        <td>13</td></tr>
+      <tr>
+        <td>CIRCLE_BUILD_URL</td>
+        <td><a href="https://circleci.com/gh/pradeepsheokand/factorialCalcChallenge/13" target="_blank">https://circleci.com/gh/pradeepsheokand/factorialCalcChallenge/13</a></td></tr>
+      <tr>
+        <td>CIRCLE_COMPARE_URL</td>
+        <td><a href="https://github.com/pradeepsheokand/factorialCalcChallenge/compare/ede2e87f67a1efcdcb13c755ffbac23a051aa3a8...efa126368c08165327822383a386d1a763c2b93a" target="_blank">https://github.com/pradeepsheokand/factorialCalcChallenge/compare/ede2e87f67a1efcdcb13c755ffbac23a051aa3a8...efa126368c08165327822383a386d1a763c2b93a</a></td></tr>
+      <tr>
+        <td>CIRCLE_NODE_INDEX</td>
+        <td>0</td></tr>
+      <tr>
+        <td>CIRCLE_NODE_TOTAL</td>
+        <td>1</td></tr>
+      <tr>
+        <td>CIRCLE_PREVIOUS_BUILD_NUM</td>
+        <td>12</td></tr>
+      <tr>
+        <td>CIRCLE_PROJECT_REPONAME</td>
+        <td>factorialCalcChallenge</td></tr>
+      <tr>
+        <td>CIRCLE_PROJECT_USERNAME</td>
+        <td>pradeepsheokand</td></tr>
+      <tr>
+        <td>CIRCLE_REPOSITORY_URL</td>
+        <td>git@github.com:pradeepsheokand/factorialCalcChallenge.git</td></tr>
+      <tr>
+        <td>CIRCLE_SHA1</td>
+        <td>efa126368c08165327822383a386d1a763c2b93a</td></tr>
+      <tr>
+        <td>CIRCLE_USERNAME</td>
+        <td>pradeepsheokand</td></tr>
+      <tr>
+        <td>Packages</td>
+        <td>{"pluggy": "0.13.1", "py": "1.10.0", "pytest": "6.2.3"}</td></tr>
+      <tr>
+        <td>Platform</td>
+        <td>Linux-4.15.0-1106-aws-x86_64-with-glibc2.31</td></tr>
+      <tr>
+        <td>Plugins</td>
+        <td>{"allure-pytest": "2.6.5", "html": "3.1.1", "metadata": "1.11.0"}</td></tr>
+      <tr>
+        <td>Python</td>
+        <td>3.9.7</td></tr></table>
+    <h2>Summary</h2>
+    <p>10 tests ran in 258.58 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">8 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">2 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_1000[1000-The factorial of 1000 is: Infinity]</td>
+          <td class="col-duration">2.61</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">items = 1000, expected = &#x27;The factorial of 1000 is: Infinity&#x27;<br/><br/>    @pytest.mark.bignumbers<br/>    @pytest.mark.parametrize(<br/>        &quot;items,expected&quot;,<br/>        [<br/>            (1000, &#x27;The factorial of 1000 is: Infinity&#x27;),  #BaseNumber is 1000, second value is the expected message calculator should show<br/>        ],<br/>    )<br/>    def test_factorial_1000(items, expected):<br/>        actualResult = calcFactorialUnexpected(items)<br/>&gt;       assert actualResult  == expected<br/><span class="error">E       AssertionError: assert &#x27;&#x27; == &#x27;The factoria... is: Infinity&#x27;</span><br/><span class="error">E         - The factorial of 1000 is: Infinity</span><br/><br/>tests/testfactorialcalculator.py:76: AssertionError<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:91 txt= $<br/></div></td></tr></tbody>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_negative[-2-Please enter a positive integer]</td>
+          <td class="col-duration">2.56</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">items = -2, expected = &#x27;Please enter a positive integer&#x27;<br/><br/>    @pytest.mark.parametrize(<br/>        &quot;items,expected&quot;,<br/>        [<br/>            (-2, &#x27;Please enter a positive integer&#x27;),  #BaseNumber is -2, second value is the expected message calculator should show<br/>        ],<br/>    )<br/>    def test_factorial_negative(items, expected):<br/>        actualResult = calcFactorialUnexpected(items)<br/>&gt;       assert actualResult  == expected<br/><span class="error">E       AssertionError: assert &#x27;&#x27; == &#x27;Please enter...itive integer&#x27;</span><br/><span class="error">E         - Please enter a positive integer</span><br/><br/>tests/testfactorialcalculator.py:97: AssertionError<br/> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:91 txt= $<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_basic[0-expected0]</td>
+          <td class="col-duration">3.68</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:71 txt= $The factorial of 0 is: 1
+INFO     root:factorialsourcecode.py:75 result_list= $[[0, 1]]<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_positiveinteger_chrome</td>
+          <td class="col-duration">110.79</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:110 txt= $The factorial of 9 is: 362880
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 10 is: 3628800
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 11 is: 39916800
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 12 is: 479001600
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 13 is: 6227020800
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 14 is: 87178291200
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 15 is: 1307674368000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 16 is: 20922789888000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 17 is: 355687428096000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 18 is: 6402373705728000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 19 is: 121645100408832000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 20 is: 2432902008176640000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 21 is: 51090942171709440000
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 22 is: 1.1240007277776077e+21
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 23 is: 2.585201673888498e+22
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 24 is: 6.204484017332394e+23
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 25 is: 1.5511210043330986e+25
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 26 is: 4.0329146112660565e+26
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 27 is: 1.0888869450418352e+28
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 28 is: 3.0488834461171387e+29
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 29 is: 8.841761993739702e+30
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 30 is: 2.6525285981219107e+32
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 31 is: 8.222838654177922e+33
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 32 is: 2.631308369336935e+35
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 33 is: 8.683317618811886e+36
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 34 is: 2.9523279903960416e+38
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 35 is: 1.0333147966386145e+40
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 36 is: 3.7199332678990125e+41
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 37 is: 1.3763753091226346e+43
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 38 is: 5.230226174666011e+44
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 39 is: 2.0397882081197444e+46
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 40 is: 8.159152832478977e+47
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 41 is: 3.345252661316381e+49
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 42 is: 1.40500611775288e+51
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 43 is: 6.041526306337383e+52
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 44 is: 2.658271574788449e+54
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 45 is: 1.1962222086548019e+56
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 46 is: 5.502622159812089e+57
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 47 is: 2.5862324151116818e+59
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 48 is: 1.2413915592536073e+61
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 49 is: 6.082818640342675e+62
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 50 is: 3.0414093201713376e+64
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 51 is: 1.5511187532873822e+66
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 52 is: 8.065817517094388e+67
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 53 is: 4.2748832840600255e+69
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 54 is: 2.308436973392414e+71
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 55 is: 1.2696403353658276e+73
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 56 is: 7.109985878048635e+74
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 57 is: 4.0526919504877214e+76
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 58 is: 2.3505613312828785e+78
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 59 is: 1.3868311854568984e+80
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 60 is: 8.32098711274139e+81
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 61 is: 5.075802138772248e+83
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 62 is: 3.146997326038794e+85
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 63 is: 1.98260831540444e+87
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 64 is: 1.2688693218588417e+89
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 65 is: 8.247650592082472e+90
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 66 is: 5.443449390774431e+92
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 67 is: 3.647111091818868e+94
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 68 is: 2.4800355424368305e+96
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 69 is: 1.711224524281413e+98
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 70 is: 1.1978571669969892e+100
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 71 is: 8.504785885678623e+101
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 72 is: 6.1234458376886085e+103
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 73 is: 4.4701154615126844e+105
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 74 is: 3.307885441519386e+107
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 75 is: 2.48091408113954e+109
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 76 is: 1.8854947016660504e+111
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 77 is: 1.4518309202828587e+113
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 78 is: 1.1324281178206297e+115
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 79 is: 8.946182130782976e+116
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 80 is: 7.156945704626381e+118
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 81 is: 5.797126020747368e+120
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 82 is: 4.753643337012842e+122
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 83 is: 3.945523969720659e+124
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 84 is: 3.314240134565353e+126
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 85 is: 2.81710411438055e+128
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 86 is: 2.4227095383672734e+130
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 87 is: 2.107757298379528e+132
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 88 is: 1.8548264225739844e+134
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 89 is: 1.650795516090846e+136
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 90 is: 1.4857159644817615e+138
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 91 is: 1.352001527678403e+140
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 92 is: 1.2438414054641308e+142
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 93 is: 1.1567725070816416e+144
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 94 is: 1.087366156656743e+146
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 95 is: 1.032997848823906e+148
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 96 is: 9.916779348709496e+149
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 97 is: 9.619275968248212e+151
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 98 is: 9.426890448883248e+153
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 99 is: 9.332621544394415e+155
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 100 is: 9.332621544394415e+157
+INFO     root:factorialsourcecode.py:110 txt= $The factorial of 101 is: 9.42594775983836e+159<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_positiveinteger_firefox</td>
+          <td class="col-duration">122.13</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:134 txt= $The factorial of 9 is: 362880
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 10 is: 3628800
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 11 is: 39916800
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 12 is: 479001600
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 13 is: 6227020800
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 14 is: 87178291200
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 15 is: 1307674368000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 16 is: 20922789888000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 17 is: 355687428096000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 18 is: 6402373705728000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 19 is: 121645100408832000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 20 is: 2432902008176640000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 21 is: 51090942171709440000
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 22 is: 1.1240007277776077e+21
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 23 is: 2.585201673888498e+22
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 24 is: 6.204484017332394e+23
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 25 is: 1.5511210043330986e+25
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 26 is: 4.0329146112660565e+26
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 27 is: 1.0888869450418352e+28
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 28 is: 3.0488834461171387e+29
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 29 is: 8.841761993739702e+30
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 30 is: 2.6525285981219107e+32
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 31 is: 8.222838654177922e+33
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 32 is: 2.631308369336935e+35
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 33 is: 8.683317618811886e+36
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 34 is: 2.9523279903960416e+38
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 35 is: 1.0333147966386145e+40
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 36 is: 3.7199332678990125e+41
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 37 is: 1.3763753091226346e+43
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 38 is: 5.230226174666011e+44
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 39 is: 2.0397882081197444e+46
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 40 is: 8.159152832478977e+47
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 41 is: 3.345252661316381e+49
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 42 is: 1.40500611775288e+51
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 43 is: 6.041526306337383e+52
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 44 is: 2.658271574788449e+54
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 45 is: 1.1962222086548019e+56
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 46 is: 5.502622159812089e+57
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 47 is: 2.5862324151116818e+59
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 48 is: 1.2413915592536073e+61
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 49 is: 6.082818640342675e+62
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 50 is: 3.0414093201713376e+64
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 51 is: 1.5511187532873822e+66
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 52 is: 8.065817517094388e+67
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 53 is: 4.2748832840600255e+69
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 54 is: 2.308436973392414e+71
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 55 is: 1.2696403353658276e+73
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 56 is: 7.109985878048635e+74
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 57 is: 4.0526919504877214e+76
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 58 is: 2.3505613312828785e+78
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 59 is: 1.3868311854568984e+80
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 60 is: 8.32098711274139e+81
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 61 is: 5.075802138772248e+83
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 62 is: 3.146997326038794e+85
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 63 is: 1.98260831540444e+87
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 64 is: 1.2688693218588417e+89
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 65 is: 8.247650592082472e+90
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 66 is: 5.443449390774431e+92
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 67 is: 3.647111091818868e+94
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 68 is: 2.4800355424368305e+96
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 69 is: 1.711224524281413e+98
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 70 is: 1.1978571669969892e+100
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 71 is: 8.504785885678623e+101
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 72 is: 6.1234458376886085e+103
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 73 is: 4.4701154615126844e+105
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 74 is: 3.307885441519386e+107
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 75 is: 2.48091408113954e+109
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 76 is: 1.8854947016660504e+111
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 77 is: 1.4518309202828587e+113
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 78 is: 1.1324281178206297e+115
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 79 is: 8.946182130782976e+116
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 80 is: 7.156945704626381e+118
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 81 is: 5.797126020747368e+120
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 82 is: 4.753643337012842e+122
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 83 is: 3.945523969720659e+124
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 84 is: 3.314240134565353e+126
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 85 is: 2.81710411438055e+128
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 86 is: 2.4227095383672734e+130
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 87 is: 2.107757298379528e+132
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 88 is: 1.8548264225739844e+134
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 89 is: 1.650795516090846e+136
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 90 is: 1.4857159644817615e+138
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 91 is: 1.352001527678403e+140
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 92 is: 1.2438414054641308e+142
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 93 is: 1.1567725070816416e+144
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 94 is: 1.087366156656743e+146
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 95 is: 1.032997848823906e+148
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 96 is: 9.916779348709496e+149
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 97 is: 9.619275968248212e+151
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 98 is: 9.426890448883248e+153
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 99 is: 9.332621544394415e+155
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 100 is: 9.332621544394415e+157
+INFO     root:factorialsourcecode.py:134 txt= $The factorial of 101 is: 9.42594775983836e+159<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_plus_sign[3-expected0]</td>
+          <td class="col-duration">4.77</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:71 txt= $The factorial of 3 is: 6
+INFO     root:factorialsourcecode.py:75 result_list= $[[3, 6]]<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_500[500-The factorial of 500 is: Infinity]</td>
+          <td class="col-duration">2.67</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:91 txt= $The factorial of 500 is: Infinity<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_random</td>
+          <td class="col-duration">4.02</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:71 txt= $The factorial of 12 is: 479001600
+INFO     root:factorialsourcecode.py:75 result_list= $[[12, 479001600]]<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_string[abc-Please enter an integer]</td>
+          <td class="col-duration">2.33</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:91 txt= $Please enter an integer<br/></div></td></tr></tbody>
+      <tbody class="passed results-table-row">
+        <tr>
+          <td class="col-result">Passed</td>
+          <td class="col-name">tests/testfactorialcalculator.py::test_factorial_alphanumeric[12abc-Please enter an integer]</td>
+          <td class="col-duration">2.40</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log"> -------------------------------Captured log call-------------------------------- <br/>INFO     root:factorialsourcecode.py:91 txt= $Please enter an integer<br/></div></td></tr></tbody></table></body></html>
